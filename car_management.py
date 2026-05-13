@@ -194,11 +194,9 @@ def assign(user, car):
     if "user" not in session:
         return redirect("/login")
 
-    # already assigned
     if user_has_car(user):
         return redirect("/")
 
-    # car full
     if car_count(car) >= MAX_USERS_PER_CAR:
         return redirect("/")
 
@@ -214,19 +212,39 @@ def assign(user, car):
     return redirect("/")
 
 
-# ---------------- DONE ----------------
-@app.route("/done/<int:user>")
-def done(user):
+# ---------------- NEXT STATUS ----------------
+@app.route("/next/<int:user>")
+def next_status(user):
 
     if "user" not in session:
         return redirect("/login")
 
     cur.execute(
-        "UPDATE assignments SET status='DONE' WHERE user_id=?",
+        "SELECT status FROM assignments WHERE user_id=?",
         (user,)
     )
 
-    conn.commit()
+    result = cur.fetchone()
+
+    if result:
+
+        current = result[0]
+
+        if current == "PENDING":
+            new_status = "ON DRIVE"
+
+        elif current == "ON DRIVE":
+            new_status = "DONE"
+
+        else:
+            new_status = "DONE"
+
+        cur.execute(
+            "UPDATE assignments SET status=? WHERE user_id=?",
+            (new_status, user)
+        )
+
+        conn.commit()
 
     return redirect("/")
 
@@ -318,14 +336,18 @@ def home():
 
     <style>
 
+    body{
+        background:#f8f9fa;
+    }
+
     h2{
         text-align:center;
         margin-bottom:20px;
+        font-weight:bold;
     }
 
     p{
         text-align:center;
-        margin-top:5px;
     }
 
     .done-box{
@@ -335,15 +357,19 @@ def home():
     }
 
     .pending-box{
+        background:gold;
+        color:black;
+        font-weight:bold;
+    }
+
+    .drive-box{
         background:magenta;
         color:white;
         font-weight:bold;
     }
 
-    .ready-box{
-        background:green;
-        color:white;
-        font-weight:bold;
+    table{
+        background:white;
     }
 
     </style>
@@ -351,12 +377,10 @@ def home():
     <div class="container mt-4">
 
         <p>
-            🌸&#128153..Alhamdulillah..&#128153🌸
+            🌸💙..Alhamdulillah..💙🌸
         </p>
 
         <h2>🚗 CAR MANAGEMENT SYSTEM</h2>
-
-        
 
         <p>
             👤 Logged in as:
@@ -400,7 +424,7 @@ def home():
 
             {% for car in cars %}
 
-            <div class="col-md-3">
+            <div class="col-md-3 mb-3">
 
                 <div class="card text-center shadow">
 
@@ -454,7 +478,8 @@ def home():
 
             <tr>
 
-                {% set row_class = "ready-box" %}
+                {% set row_class = "" %}
+                {% set status_text = "" %}
 
                 {% for u, c, d, s in data %}
 
@@ -464,6 +489,11 @@ def home():
 
                             {% set row_class = "pending-box" %}
                             {% set status_text = "PENDING" %}
+
+                        {% elif s == "ON DRIVE" %}
+
+                            {% set row_class = "drive-box" %}
+                            {% set status_text = "ON DRIVE" %}
 
                         {% elif s == "DONE" %}
 
@@ -500,14 +530,28 @@ def home():
 
                                     <a
                                         class="btn btn-warning btn-sm"
-                                        href="/done/{{user}}"
+                                        href="/next/{{user}}"
+                                        
                                     >
                                         PENDING
                                     </a>
 
+                                {% elif s == "ON DRIVE" %}
+
+                                    <a
+                                        class="btn btn-sm btn-info"
+                                        href="/next/{{user}}"
+                    
+                                    >
+                                        ON DRIVE
+                                    </a>
+
                                 {% elif s == "DONE" %}
 
-                                    <span class="badge bg-danger">
+                                    <span
+                                        class="btn btn-danger btn-sm"
+                                        
+                                    >
                                         DONE
                                     </span>
 
@@ -570,9 +614,8 @@ def home():
 
         </div>
 
-        <p>
-            Made By &#127802 Md. Shamsul Arefin (252)&#127802
-
+        <p class="mt-4">
+             &#127802 Made By Md. Shamsul Arefin (252)  &#127802
         </p>
 
     </div>
